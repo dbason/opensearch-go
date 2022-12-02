@@ -45,8 +45,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/opensearch-project/opensearch-go/v2/signer"
-
 	"github.com/opensearch-project/opensearch-go/v2/internal/version"
 )
 
@@ -75,13 +73,11 @@ func init() {
 }
 
 // Interface defines the interface for HTTP client.
-//
 type Interface interface {
 	Perform(*http.Request) (*http.Response, error)
 }
 
 // Config represents the configuration of HTTP client.
-//
 type Config struct {
 	URLs     []*url.URL
 	Username string
@@ -89,8 +85,6 @@ type Config struct {
 
 	Header http.Header
 	CACert []byte
-
-	Signer signer.Signer
 
 	RetryOnStatus        []int
 	DisableRetry         bool
@@ -113,7 +107,6 @@ type Config struct {
 }
 
 // Client represents the HTTP client.
-//
 type Client struct {
 	sync.Mutex
 
@@ -121,8 +114,6 @@ type Client struct {
 	username string
 	password string
 	header   http.Header
-
-	signer signer.Signer
 
 	retryOnStatus         []int
 	disableRetry          bool
@@ -146,7 +137,6 @@ type Client struct {
 // New creates new transport client.
 //
 // http.DefaultTransport will be used if no transport is passed in the configuration.
-//
 func New(cfg Config) (*Client, error) {
 	if cfg.Transport == nil {
 		cfg.Transport = http.DefaultTransport
@@ -186,8 +176,6 @@ func New(cfg Config) (*Client, error) {
 		username: cfg.Username,
 		password: cfg.Password,
 		header:   cfg.Header,
-
-		signer: cfg.Signer,
 
 		retryOnStatus:         cfg.RetryOnStatus,
 		disableRetry:          cfg.DisableRetry,
@@ -235,7 +223,6 @@ func New(cfg Config) (*Client, error) {
 }
 
 // Perform executes the request and returns a response or error.
-//
 func (c *Client) Perform(req *http.Request) (*http.Response, error) {
 	var (
 		res *http.Response
@@ -316,10 +303,6 @@ func (c *Client) Perform(req *http.Request) (*http.Response, error) {
 		// Update request
 		c.setReqURL(conn.URL, req)
 		c.setReqAuth(conn.URL, req)
-
-		if err = c.signRequest(req); err != nil {
-			return nil, fmt.Errorf("failed to sign request: %s", err)
-		}
 
 		if !c.disableRetry && i > 0 && req.Body != nil && req.Body != http.NoBody {
 			body, err := req.GetBody()
@@ -413,8 +396,6 @@ func (c *Client) Perform(req *http.Request) (*http.Response, error) {
 }
 
 // URLs returns a list of transport URLs.
-//
-//
 func (c *Client) URLs() []*url.URL {
 	return c.pool.URLs()
 }
@@ -449,13 +430,6 @@ func (c *Client) setReqAuth(u *url.URL, req *http.Request) *http.Request {
 	}
 
 	return req
-}
-
-func (c *Client) signRequest(req *http.Request) error {
-	if c.signer != nil {
-		return c.signer.SignRequest(req)
-	}
-	return nil
 }
 
 func (c *Client) setReqUserAgent(req *http.Request) *http.Request {
